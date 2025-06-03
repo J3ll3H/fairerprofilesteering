@@ -58,7 +58,7 @@ class ProfileSteering():
 			print("Iteration", i, "-- Winner", best_device, "Improvement", best_improvement)
 			# print("Overall Profile", self.x)
 			
-			# Now check id the improvement is good enough
+			# Now check if the improvement is good enough
 			if best_improvement < e_min:
 				break # Break the loop
 				

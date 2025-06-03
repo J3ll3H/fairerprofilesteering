@@ -35,6 +35,10 @@ from dev.heatpump import HeatPump
 # Import Profile Steering
 from profilesteering import ProfileSteering
 
+# Import libraries
+import matplotlib.pyplot as plt 
+import numpy as np
+
 # Initialisation
 devices = []
 
@@ -48,29 +52,46 @@ max_iters = 100		# maximum number of iterations
 
 # Create the model:
 
+# number of devices
+nr_baseloads = 100
+nr_batteries = 100
+nr_evs = 100
+nr_heatpumps = 100
+
 # Add some baseloads
-for i in range(0,10):
+for i in range(0,nr_baseloads):
 	devices.append(Load())
 
 # Add some batteries
-for i in range(0,10):
+for i in range(0,nr_batteries):
 	devices.append(Battery())
 	
 # Add some EVs
-for i in range(0,10):
+for i in range(0,nr_evs):
 	devices.append(ElectricVehicle())
 
 # Add some Heatpumps
-for i in range(0,10):
+for i in range(0,nr_heatpumps):
 	devices.append(HeatPump())
 	
 # Run the Profile Steering algorithm
 ps = ProfileSteering(devices)
-power_profile = ps.init(desired_profile)
-power_profile = ps.iterative(e_min, max_iters)
+power_profile = ps.init(desired_profile)        # Initial planning
+initial_profile = power_profile                 # Store initial planning
+power_profile = ps.iterative(e_min, max_iters)  # Iterative phase
 
 # And now power_profile has the result
-# print("Resulting profile", power_profile)
+#print("Resulting profile", power_profile)
 
 # Tools like matplotlib let you plot this in a nice way
 # Other tools may also have this available
+
+# Plot initial VS optimized planning
+t = np.arange(0., intervals/4, 0.25)              #sample values at 15mins (scale is in hours)
+plt.plot(t, initial_profile, 'r', label='Initial')
+plt.plot(t, power_profile, 'b', label='Optimized')
+plt.xlabel('Planning [h]')
+plt.ylabel('Power profile [W?]')
+plt.title('Power profile before and after optimizing')
+plt.legend()
+plt.show()
