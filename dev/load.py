@@ -20,6 +20,8 @@ class Load():
 	def __init__(self):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
+		self.type = "BL"
+		self.burden = 0		# bore burden / discomfort of this device
 		
 		# Device specific params
 		self.max = 5000
@@ -43,12 +45,16 @@ class Load():
 											
 		# Calculate the improvement by this device:
 		e_m = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
-	
-		# Return the improvement
+		
+		# Calculate the additional burden / discomfort this change would inflict on this device:
+		add_b = 1		# TODO Placeholder with 'times picked' as burden
+		
+		# Return the improvement and additional burden
 		# Note that e_m should be 0 for a static device
 		# print("Improvement: ", self, e_m)
-		return e_m
+		return e_m, add_b
 		
-	def accept(self):
+	def accept(self, b):
 		# We are chosen as winner, replace the profile:
 		self.profile = list(self.candidate)
+		self.burden = self.burden + b			# update bore burden / discomfort 

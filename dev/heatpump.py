@@ -21,6 +21,8 @@ class HeatPump():
 	def __init__(self):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
+		self.type = "HP"
+		self.burden = 0		# bore burden / discomfort of this device
 		
 		# Device specific params
 		self.capacity = 	14000	# in Wtau, converted in electricity equivalent
@@ -46,7 +48,7 @@ class HeatPump():
 		# We can use the planning function in a local fashion with a zero profile to get a plan
 		# Another option would be to use a greedy strategy to plan the profile with greedy charging: asap
 		self.plan(p)	# Create an initial plan
-		self.accept()	# Accept it, such that self.profile is set
+		self.accept(0)	# Accept it, such that self.profile is set
 		
 		return list(self.profile)
 			
@@ -73,17 +75,20 @@ class HeatPump():
 				
 		# Calculate the improvement by this device:
 		e_m = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
-	
 		
-		# Return the improvement
+		# Calculate the additional burden / discomfort this change would inflict on this device:
+		add_b = 1		# TODO Placeholder with 'times picked' as burden
+		
+		# Return the improvement and additional burden	
 		# print("Improvement: ", self, e_m)
-		return e_m
+		return e_m, add_b
 		
 		
-	def accept(self):
+	def accept(self, b):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
+		self.burden = self.burden + b			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff

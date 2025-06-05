@@ -21,6 +21,8 @@ class ElectricVehicle():
 	def __init__(self):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
+		self.type = "EV"
+		self.burden = 0		# bore burden / discomfort of this device
 		
 		# Intervallength in seonds
 		self.intervalLength = 900
@@ -28,12 +30,12 @@ class ElectricVehicle():
 		# Device specific params
 		self.capacity = 	40000	# Wh
 		
-		self.powers = 	[0, 3000, 4000, 5000, 6000, 7000, 8000] # Charging powers supported by the EV in Watt
+		self.powers = 	[0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000] # Charging powers supported by the EV in Watt
 			# NOTE: In continuous mode it will select only the first and last element, any power inbetween is possible
 			# NOTE: V2G is supported!
 			
 		# Set the following to True to use discrete mode optimization:
-		self.discrete = False
+		self.discrete = True
 		
 		# Connection time of the EV in intervals
 		# using intervals of 15 mintues for one day, e.g. 96 in total
@@ -57,7 +59,7 @@ class ElectricVehicle():
 		# We can use the planning function in a local fashion with a zero profile to get a plan
 		# Another option would be to use a greedy strategy to plan the profile with greedy charging: asap
 		self.plan(p)	# Create an initial plan
-		self.accept()	# Accept it, such that self.profile is set
+		self.accept(0)	# Accept it, such that self.profile is set
 		
 		return list(self.profile)
 	
@@ -105,16 +107,20 @@ class ElectricVehicle():
 		# Calculate the improvement by this device:
 		e_m = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
-		# Return the improvement
+		# Calculate the additional burden / discomfort this change would inflict on this device:
+		add_b = 1		# TODO Placeholder with 'times picked' as burden
+		
+		# Return the improvement and additional burden
 		# print("Improvement: ", self, e_m)
-		return e_m
+		return e_m, add_b
 		
 		
 	# Accept a profile	
-	def accept(self):
+	def accept(self, b):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
+		self.burden = self.burden + b			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff

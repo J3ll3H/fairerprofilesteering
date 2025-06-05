@@ -36,62 +36,102 @@ from dev.heatpump import HeatPump
 from profilesteering import ProfileSteering
 
 # Import libraries
-import matplotlib.pyplot as plt 
-import numpy as np
-
-# Initialisation
-devices = []
+import matplotlib.pyplot as plt     # for plotting
+import numpy as np                  # for number math
+from ttictoc import tic,toc         # for timekeeping, install using cmd: pip install ttictoc
 
 # Settings
-intervals = 96
+intervals = 96                      # number of 15min intervals: 96 is 24hours
 desired_profile = [0]*intervals		# d in the PS paper
 power_profile = [0]*intervals		# x in the PS paper
 
-e_min = 0.001		# e_min in the PS paper
-max_iters = 100		# maximum number of iterations
+e_min = 0.00001		# e_min in the PS paper
+max_iters = 500		# maximum number of iterations
+
+nr_baseloads = 100
+nr_batteries = 10
+nr_evs = 100
+nr_heatpumps = 10
+
 
 # Create the model:
-
-# number of devices
-nr_baseloads = 100
-nr_batteries = 100
-nr_evs = 100
-nr_heatpumps = 100
-
+# Initialisation
+devices = []
 # Add some baseloads
 for i in range(0,nr_baseloads):
 	devices.append(Load())
-
 # Add some batteries
 for i in range(0,nr_batteries):
 	devices.append(Battery())
-	
 # Add some EVs
 for i in range(0,nr_evs):
 	devices.append(ElectricVehicle())
-
 # Add some Heatpumps
 for i in range(0,nr_heatpumps):
 	devices.append(HeatPump())
 	
+	
 # Run the Profile Steering algorithm
+tic()
 ps = ProfileSteering(devices)
 power_profile = ps.init(desired_profile)        # Initial planning
 initial_profile = power_profile                 # Store initial planning
-power_profile = ps.iterative(e_min, max_iters)  # Iterative phase
+power_profile, tr_improvement, tr_objective, tr_gini = ps.iterative(e_min, max_iters)  # Iterative phase
+print('Elapsed time (s): ', toc())
 
 # And now power_profile has the result
 #print("Resulting profile", power_profile)
 
+# PLOTS
 # Tools like matplotlib let you plot this in a nice way
 # Other tools may also have this available
 
-# Plot initial VS optimized planning
+# Initialize grid of subplots
+fig, axes = plt.subplots(1, 5, figsize=(22, 5))  # x rows, y columns
+
+# First subplot: Initial & Optimized planning
 t = np.arange(0., intervals/4, 0.25)              #sample values at 15mins (scale is in hours)
-plt.plot(t, initial_profile, 'r', label='Initial')
-plt.plot(t, power_profile, 'b', label='Optimized')
-plt.xlabel('Planning [h]')
-plt.ylabel('Power profile [W?]')
-plt.title('Power profile before and after optimizing')
-plt.legend()
+axes[0].plot(t, initial_profile, 'r', label='Initial')
+axes[0].plot(t, power_profile, 'b', label='Optimized')
+axes[0].set_xlabel('Planning [h]')
+axes[0].set_ylabel('Power profile [W]')
+axes[0].set_title('Power profile before and after optimizing')
+axes[0].legend()
+
+# Second subplot: Iteration vs Improvement
+axes[1].plot(tr_improvement, 'g')
+axes[1].set_xlabel('Iterations [#]')
+axes[1].set_ylabel('Improvement')
+axes[1].set_title('Improvement per Iteration')
+axes[1].set_yscale('log')
+axes[1].grid(True)
+
+# Third subplot: Iteration vs Objective
+axes[2].plot(tr_objective, 'b')
+axes[2].set_xlabel('Iterations [#]')
+axes[2].set_ylabel('Objective score (2-norm)')
+axes[2].set_title('Objective Score per Iteration')
+axes[2].grid(True)
+
+# Fourth subplot: Iteration vs Fairness (Gini Coefficient)
+axes[3].plot(tr_gini, 'y')
+axes[3].set_xlabel('Iterations [#]')
+axes[3].set_ylabel('Gini Coefficient')
+axes[3].set_title('Inequality per Iteration (Gini Coefficient)')
+axes[3].grid(True)
+
+# Fifth subplot: Final Distribution of Burdens for all Devices (exclude baseloads)
+device_list = []
+for i, device in enumerate(devices, start=1):
+	#device_list.append(f"{i}: {device.type}")
+	if device.type != "BL":
+	    device_list.append(i)           # give an id to each device
+burdens = [device.burden for device in devices if device.type != "BL"]
+axes[4].bar(device_list, burdens)
+axes[4].set_title('Distribution of burdens')
+axes[4].set_xlabel('Devices')
+axes[4].set_ylabel('Burden')
+
+# Finalize plot
+plt.tight_layout()
 plt.show()
