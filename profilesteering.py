@@ -43,7 +43,7 @@ class ProfileSteering():
 		denominator = 2 * n**2 * mean								# denominator for dividing the double summation over 2 and normalizing over calculations (n^2) and mean 
 		return diff_sum / denominator if denominator != 0 else 0	# return calculation, tackle divisions by 0
 		
-	def iterative(self, e_min, max_iters):
+	def iterative(self, e_min, max_iters, tau):
 		# Initialize trackers for each iteration
 		tr_improvement = np.array([])
 		tr_objective = np.array([])
@@ -54,30 +54,52 @@ class ProfileSteering():
 			# Init
 			best_improvement = 0
 			best_device = None
+			lowest_score = np.inf		# initialize score as infinity to ensure the first device is an improvement
 			
 			# difference profile
 			d = list(map(operator.sub, self.x, self.p)) # d = x - p
 			
-			# request a new candidate profile from each device 
+			# Vanilla PS mechanism:
+			# request a new candidate profile from each device
+			#for device in self.devices:
+			#	improvement = device.plan(d)
+			#	if improvement > best_improvement:
+			#		best_improvement = improvement
+			#		best_device = device
+
+			# Fairer PS mechanism:
+			# request a new candidate profile from each device
 			for device in self.devices:
 				improvement, add_burden = device.plan(d)
-				# track best scoring device
-				if improvement > best_improvement:
-					best_improvement = improvement
-					best_device = device
+			# score all devices that have e_m > 0 (essentially exclude baseloads)
+			contributing_devices = [cd for cd in self.devices if cd.candidate_improvement > 0]	# filter out contributing devices, calculate values required for normalization
+			sum_B = sum((cd.burden + cd.candidate_burden) for cd in contributing_devices)
+			sum_E = sum(cd.candidate_improvement for cd in contributing_devices)
+			M = len(contributing_devices)	
+			for device in contributing_devices:
+				score_pt1 = (device.burden + device.candidate_burden) / ((1/M)*sum_B)
+				score_pt2 = device.candidate_improvement / ((1/M)*sum_E)
+				score = tau*score_pt1-(1-tau)*score_pt2
+				# track lowest scoring device
+				if (score < lowest_score):
+						lowest_score = score			
+						best_device = device
+						best_improvement = best_device.candidate_improvement
 					
-			# Now set the winner (best scoring device) and update the planning and improvement tracker
+			# Now set the winner (best scoring device) and update its planning+burden and improvement tracker
 			if best_device is not None:
-				diff = best_device.accept(add_burden)
+				diff = best_device.accept(best_device.candidate_burden)
 				self.x = list(map(operator.add, self.x, diff))
 				tr_improvement = np.append(tr_improvement,best_improvement)
 
 			# Update objective + fairness trackers
 			new_objective = np.linalg.norm(np.array(self.x)-np.array(self.p))	# update objective score 2-norm x-p
 			tr_objective = np.append(tr_objective,new_objective)
-			new_gini = ProfileSteering.gini(np.array([device.burden for device in self.devices]))	# update Gini coefficient
+
+			burdens = [device.burden for device in self.devices if device.type != "BL"] #Exclude BL as they are passive devices
+			new_gini = ProfileSteering.gini(np.array(burdens))	# update Gini coefficient
 			tr_gini = np.append(tr_gini,new_gini)
-			#print("Iteration", i, "-- Winning type is ", best_device.type, " -- Improvement is ", best_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
+			print("Iteration", i, "-- Winning type is ", best_device.type, " with score ",  lowest_score, " -- Improvement is ", best_device.candidate_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
 
 			# Now check if the improvement is good enough
 			if best_improvement < e_min:

@@ -21,7 +21,9 @@ class Load():
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
 		self.type = "BL"
-		self.burden = 0		# bore burden / discomfort of this device
+		self.burden = 0						# total bore burden / discomfort of this device
+		self.candidate_improvement = 0		# last proposed improvement
+		self.candidate_burden = 0			# last proposed burden their candidate would inflict
 		
 		# Device specific params
 		self.max = 5000
@@ -44,17 +46,21 @@ class Load():
 											# Note that we need to create a new list due to "hidden pointers" in Python
 											
 		# Calculate the improvement by this device:
-		e_m = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
+		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		add_b = 1		# TODO Placeholder with 'times picked' as burden
+		self.candidate_burden = 1		# TODO Placeholder with 'times picked' as burden
 		
 		# Return the improvement and additional burden
 		# Note that e_m should be 0 for a static device
 		# print("Improvement: ", self, e_m)
-		return e_m, add_b
+		return self.candidate_improvement, self.candidate_burden
 		
-	def accept(self, b):
+	def accept(self,b):
 		# We are chosen as winner, replace the profile:
+		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
 		self.burden = self.burden + b			# update bore burden / discomfort 
+		
+		# Note we can send the difference profile only as incremental update
+		return diff		# return 0 difference as baseload does not change anything when picked 

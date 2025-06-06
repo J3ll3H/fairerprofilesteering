@@ -45,13 +45,15 @@ intervals = 96                      # number of 15min intervals: 96 is 24hours
 desired_profile = [0]*intervals		# d in the PS paper
 power_profile = [0]*intervals		# x in the PS paper
 
-e_min = 0.00001		# e_min in the PS paper
-max_iters = 500		# maximum number of iterations
+tau = 0.9      # [0;1] focus on fairness vs flexibility: 1 is fully fairness, 0 is fully flexibility
+
+e_min = 0.001		# e_min in the PS paper (0.001)
+max_iters = 100		# maximum number of iterations
 
 nr_baseloads = 100
-nr_batteries = 10
-nr_evs = 100
-nr_heatpumps = 10
+nr_batteries = 2
+nr_evs = 10
+nr_heatpumps = 5
 
 
 # Create the model:
@@ -76,7 +78,7 @@ tic()
 ps = ProfileSteering(devices)
 power_profile = ps.init(desired_profile)        # Initial planning
 initial_profile = power_profile                 # Store initial planning
-power_profile, tr_improvement, tr_objective, tr_gini = ps.iterative(e_min, max_iters)  # Iterative phase
+power_profile, tr_improvement, tr_objective, tr_gini = ps.iterative(e_min, max_iters, tau)  # Iterative phase
 print('Elapsed time (s): ', toc())
 
 # And now power_profile has the result
