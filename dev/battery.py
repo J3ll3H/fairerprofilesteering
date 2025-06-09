@@ -24,6 +24,7 @@ class Battery():
 		self.burden = 0						# total bore burden / discomfort of this device
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
+		self.initial_profile = []			# saved initial profile, to be saved for reruns
 		
 		# Device specific params
 		self.capacity = 	14000
@@ -38,6 +39,8 @@ class Battery():
 		# Create an initial planning. 
 		# Since we do not know what the rest of the appliances do, we can just fill it with zeroes:
 		self.profile = [0]*len(p) 
+		self.initial_profile = self.profile		
+
 		return list(self.profile)
 			
 	def plan(self, d): 

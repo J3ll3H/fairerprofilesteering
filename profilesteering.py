@@ -34,6 +34,14 @@ class ProfileSteering():
 		#print("Initial planning", self.x)
 		return self.x
 	
+	def rerun(self,x):
+		# ask all devices to return to initial planning
+		for device in self.devices:
+			device.profile = device.initial_profile
+			device.burden = 0	#reset their burden
+		self.x = x		# reset aggregate profile
+		return 0
+	
 	def gini(values):												# function to return Gini coefficient of an array of values, based on A. Sen as half of the relative mean absolute difference
 		n = values.size												# number of values
 		if n == 0:
@@ -99,7 +107,7 @@ class ProfileSteering():
 			burdens = [device.burden for device in self.devices if device.type != "BL"] #Exclude BL as they are passive devices
 			new_gini = ProfileSteering.gini(np.array(burdens))	# update Gini coefficient
 			tr_gini = np.append(tr_gini,new_gini)
-			print("Iteration", i, "-- Winning type is ", best_device.type, " with score ",  lowest_score, " -- Improvement is ", best_device.candidate_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
+			#print("Iteration", i, "-- Winning type is ", best_device.type, " with score ",  lowest_score, " -- Improvement is ", best_device.candidate_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
 
 			# Now check if the improvement is good enough
 			if best_improvement < e_min:

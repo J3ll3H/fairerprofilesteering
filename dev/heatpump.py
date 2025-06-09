@@ -25,6 +25,7 @@ class HeatPump():
 		self.burden = 0						# total bore burden / discomfort of this device
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
+		self.initial_profile = []			# saved initial profile, to be saved for reruns
 		
 		# Device specific params
 		self.capacity = 	14000	# in Wtau, converted in electricity equivalent
@@ -51,6 +52,8 @@ class HeatPump():
 		# Another option would be to use a greedy strategy to plan the profile with greedy charging: asap
 		self.plan(p)	# Create an initial plan
 		self.accept(0)	# Accept it, such that self.profile is set
+		
+		self.initial_profile = self.profile		
 		
 		return list(self.profile)
 			

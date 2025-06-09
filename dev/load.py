@@ -24,6 +24,7 @@ class Load():
 		self.burden = 0						# total bore burden / discomfort of this device
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
+		self.initial_profile = []			# saved initial profile, to be saved for reruns
 		
 		# Device specific params
 		self.max = 5000
@@ -35,6 +36,8 @@ class Load():
 		# We create a random list of power values, but it can be any list
 		for i in range(0, len(p)):
 			self.profile.append(self.max*random.random())
+			
+		self.initial_profile = self.profile	
 			
 		return list(self.profile)
 			
