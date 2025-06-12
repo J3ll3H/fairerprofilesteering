@@ -68,18 +68,19 @@ class Battery():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		self.candidate_burden = 1		# TODO Placeholder with 'times picked' as burden
+		normalizer = self.capacity * 4 	# 1=a full capacity, x4 for the 15mins intervals
+		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
 		
 		# Return the improvement and additional burden
 		# print("Improvement: ", self, e_m)
 		return self.candidate_improvement, self.candidate_burden
 		
 		
-	def accept(self,b):
+	def accept(self):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
-		self.burden = self.burden + b			# update bore burden / discomfort 
+		self.burden = self.candidate_burden			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff

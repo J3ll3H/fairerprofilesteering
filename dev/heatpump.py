@@ -18,7 +18,7 @@ import operator
 import random
 
 class HeatPump():
-	def __init__(self):
+	def __init__(self, seed):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
 		self.type = "HP"
@@ -26,10 +26,11 @@ class HeatPump():
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
 		self.initial_profile = []			# saved initial profile, to be saved for reruns
+		random.seed(seed)					# set seed for random heat demand 
 		
 		# Device specific params
-		self.capacity = 	14000	# in Wtau, converted in electricity equivalent
-		self.max_power = 	5000	# in W, electricity
+		self.capacity = 	14000	# in Wtau, converted in electricity equivalent. Tau=0.25 so 56kWh?
+		self.max_power = 	5000	# in W
 		self.min_power = 	0
 		self.initialSoC = 	0.5*self.capacity
 			
@@ -46,14 +47,15 @@ class HeatPump():
 	
 		# Create an initial planning. 
 		# Need to set the initial profile to get the correct length:
-		self.profile = [0] * len(p)
+		self.profile = [0] * len(p)	
+		self.initial_profile = [0] * len(p)	
 		
 		# We can use the planning function in a local fashion with a zero profile to get a plan
 		# Another option would be to use a greedy strategy to plan the profile with greedy charging: asap
 		self.plan(p)	# Create an initial plan
-		self.accept(0)	# Accept it, such that self.profile is set
-		
-		self.initial_profile = self.profile		
+		self.accept()	# Accept it, such that self.profile is set
+
+		self.initial_profile = self.profile	
 		
 		return list(self.profile)
 			
@@ -82,18 +84,19 @@ class HeatPump():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		self.candidate_burden = 1		# TODO Placeholder with 'times picked' as burden
-		
+		normalizer = self.capacity * 4 	# 1=a full capacity, x4 for the 15mins intervals
+		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
+
 		# Return the improvement and additional burden	
 		# print("Improvement: ", self, e_m)
 		return self.candidate_improvement, self.candidate_burden
 		
 		
-	def accept(self,b):
+	def accept(self):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
-		self.burden = self.burden + b			# update bore burden / discomfort 
+		self.burden = self.candidate_burden			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff

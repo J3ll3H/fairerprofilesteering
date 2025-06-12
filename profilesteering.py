@@ -14,6 +14,7 @@
    
 import operator
 import numpy as np
+import random
 
 class ProfileSteering():
 	def __init__(self, devices):
@@ -81,11 +82,12 @@ class ProfileSteering():
 				improvement, add_burden = device.plan(d)
 			# score all devices that have e_m > 0 (essentially exclude baseloads)
 			contributing_devices = [cd for cd in self.devices if cd.candidate_improvement > 0]	# filter out contributing devices, calculate values required for normalization
-			sum_B = sum((cd.burden + cd.candidate_burden) for cd in contributing_devices)
+			random.shuffle(contributing_devices)		# shuffle device order, for fair picking in case of ties
+			sum_B = sum(cd.candidate_burden for cd in contributing_devices)
 			sum_E = sum(cd.candidate_improvement for cd in contributing_devices)
 			M = len(contributing_devices)	
 			for device in contributing_devices:
-				score_pt1 = (device.burden + device.candidate_burden) / ((1/M)*sum_B)
+				score_pt1 = device.candidate_burden / ((1/M)*sum_B)
 				score_pt2 = device.candidate_improvement / ((1/M)*sum_E)
 				score = tau*score_pt1-(1-tau)*score_pt2
 				# track lowest scoring device
@@ -96,7 +98,7 @@ class ProfileSteering():
 					
 			# Now set the winner (best scoring device) and update its planning+burden and improvement tracker
 			if best_device is not None:
-				diff = best_device.accept(best_device.candidate_burden)
+				diff = best_device.accept()
 				self.x = list(map(operator.add, self.x, diff))
 				tr_improvement = np.append(tr_improvement,best_improvement)
 
@@ -107,7 +109,7 @@ class ProfileSteering():
 			burdens = [device.burden for device in self.devices if device.type != "BL"] #Exclude BL as they are passive devices
 			new_gini = ProfileSteering.gini(np.array(burdens))	# update Gini coefficient
 			tr_gini = np.append(tr_gini,new_gini)
-			#print("Iteration", i, "-- Winning type is ", best_device.type, " with score ",  lowest_score, " -- Improvement is ", best_device.candidate_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
+			#print("Iteration", i, "-- Winning device is is ", best_device.type, best_device, " with score ",  lowest_score, " -- Improvement is ", best_device.candidate_improvement, " -- This device's burden is now ", best_device.burden, " -- Inequality is now ", new_gini)
 
 			# Now check if the improvement is good enough
 			if best_improvement < e_min:

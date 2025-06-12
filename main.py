@@ -45,15 +45,15 @@ intervals = 96                      # number of 15min intervals: 96 is 24hours
 desired_profile = [0]*intervals		# d in the PS paper
 power_profile = [0]*intervals		# x in the PS paper
 
-tau = [0, 1]      # list of MAX 7 tau's  [0;1] to calculate. focus fairness vs flexibility: 1 is fully fairness, 0 is fully flexibility
+tau = [0, 0.5, 0.95, 1]      # list of MAX 7 tau's  [0;1] to calculate. focus fairness vs flexibility: 1 is fully fairness, 0 is fully flexibility
 
-e_min = 0.001		# e_min in the PS paper (0.001)
-max_iters = 100		# maximum number of iterations
+e_min = 0.00		# e_min in the PS paper (0.001)
+max_iters = 1000		# maximum number of iterations
 
 nr_baseloads = 100
-nr_batteries = 2
-nr_evs = 10
-nr_heatpumps = 5
+nr_batteries = 25
+nr_evs = 25
+nr_heatpumps = 25
 
 
 # Create the model:
@@ -61,16 +61,16 @@ nr_heatpumps = 5
 devices = []
 # Add some baseloads
 for i in range(0,nr_baseloads):
-	devices.append(Load())
+	devices.append(Load(i))
 # Add some batteries
 for i in range(0,nr_batteries):
 	devices.append(Battery())
 # Add some EVs
 for i in range(0,nr_evs):
-	devices.append(ElectricVehicle())
+	devices.append(ElectricVehicle(i))
 # Add some Heatpumps
 for i in range(0,nr_heatpumps):
-	devices.append(HeatPump())
+	devices.append(HeatPump(i))
 		
 # give an id to each device (exclude baseloads). Shorter: device_list.append(i)           
 device_list = []
@@ -89,7 +89,7 @@ tr_objective = [None] * len(tau)
 tr_gini = [None] * len(tau)
 burdens = [None] * len(tau)
 tic()                                               # track time
-ps = ProfileSteering(devices)                       # initialize devices
+ps = ProfileSteering(devices)                       # initialize devices in algorithm
 initial_profile = ps.init(desired_profile)          # Initial planning
 for t in range(len(tau)):                           # run for all Tau's
     print("New iteration starting with tau = ", tau[t])
@@ -118,6 +118,9 @@ axes[0].set_xlabel('Planning [h]')
 axes[0].set_ylabel('Power profile [W]')
 axes[0].set_title('Power profile before and after optimizing')
 axes[0].legend()
+# print maximum peaks [W]
+print(f'Max power peak initially: {np.max(initial_profile):.0f} W')
+print('\n'.join([f'Max power for tau = {tau[i]}: {np.max(power_profile[i]):.0f} W' for i in range(len(tau))]))
 
 # Second subplot: Iteration vs Improvement
 for i in range(len(tau)):
@@ -156,7 +159,7 @@ for i in range(len(tau)):
     offset = i * bar_width
     axes[4].bar(bar_x + offset, burdens[i], width=bar_width, color=color, label=f'tau={tau[i]}')
 axes[4].set_xticks(bar_x + bar_width * (len(tau) - 1) / 2)
-axes[4].set_xticklabels(device_list, rotation=45, ha='right')
+axes[4].set_xticklabels(device_list, rotation=90, ha='right')
 axes[4].set_title('Distribution of burdens')
 axes[4].set_xlabel('Devices')
 axes[4].set_ylabel('Burden')

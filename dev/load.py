@@ -17,7 +17,7 @@ import operator
 import numpy as np
 
 class Load():
-	def __init__(self):
+	def __init__(self, seed):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
 		self.type = "BL"
@@ -25,6 +25,7 @@ class Load():
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
 		self.initial_profile = []			# saved initial profile, to be saved for reruns
+		self.seed = seed					# set seed for random profile generator
 		
 		# Device specific params
 		self.max = 5000
@@ -35,6 +36,7 @@ class Load():
 		
 		# We create a random list of power values, but it can be any list
 		for i in range(0, len(p)):
+			random.seed(self.seed+i)		# set seed, different for each profile value					
 			self.profile.append(self.max*random.random())
 			
 		self.initial_profile = self.profile	
@@ -52,18 +54,18 @@ class Load():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		self.candidate_burden = 1		# TODO Placeholder with 'times picked' as burden
+		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) 	# deviation from initial profile, will be 0
 		
 		# Return the improvement and additional burden
 		# Note that e_m should be 0 for a static device
 		# print("Improvement: ", self, e_m)
 		return self.candidate_improvement, self.candidate_burden
 		
-	def accept(self,b):
+	def accept(self):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
-		self.burden = self.burden + b			# update bore burden / discomfort 
+		self.burden = self.candidate_burden			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff		# return 0 difference as baseload does not change anything when picked 

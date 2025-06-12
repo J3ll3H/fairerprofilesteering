@@ -18,7 +18,7 @@ import operator
 import random
 
 class ElectricVehicle():
-	def __init__(self):
+	def __init__(self, seed):
 		self.profile = []	# x_m in the PS paper
 		self.candidate = []	# ^x_m in the PS paper
 		self.type = "EV"
@@ -26,6 +26,7 @@ class ElectricVehicle():
 		self.candidate_improvement = 0		# last proposed improvement
 		self.candidate_burden = 0			# last proposed burden their candidate would inflict
 		self.initial_profile = []			# saved initial profile, to be saved for reruns
+		random.seed(seed)					# set seed for random connection+departing times & charge request
 		
 		# Intervallength in seonds
 		self.intervalLength = 900
@@ -33,7 +34,7 @@ class ElectricVehicle():
 		# Device specific params
 		self.capacity = 	40000	# Wh
 		
-		self.powers = 	[0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000] # Charging powers supported by the EV in Watt
+		self.powers = 	[0, 4140, 4830, 5520, 6210, 6900, 7590, 8280, 8970, 9660, 10350, 11040] # Charging powers supported by the EV in Watt, based on 6-16A, 3 phases, 230V
 			# NOTE: In continuous mode it will select only the first and last element, any power inbetween is possible
 			# NOTE: V2G is supported!
 			
@@ -58,13 +59,14 @@ class ElectricVehicle():
 		# Create an initial planning. 
 		# Need to set the initial profile to get the correct length:
 		self.profile = [0] * len(p)
+		self.initial_profile = [0] * len(p)	
 		
 		# We can use the planning function in a local fashion with a zero profile to get a plan
 		# Another option would be to use a greedy strategy to plan the profile with greedy charging: asap
 		self.plan(p)	# Create an initial plan
-		self.accept(0)	# Accept it, such that self.profile is set
+		self.accept()	# Accept it, such that self.profile is set	
 
-		self.initial_profile = self.profile		
+		self.initial_profile = self.profile	
 		
 		return list(self.profile)
 	
@@ -113,7 +115,8 @@ class ElectricVehicle():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		self.candidate_burden = 1		# TODO Placeholder with 'times picked' as burden
+		normalizer = self.chargeRequest * 4 * 2 	# 1=a full capacity moved, x4 for the 15mins intervals
+		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
 		
 		# Return the improvement and additional burden
 		# print("Improvement: ", self, e_m)
@@ -121,11 +124,11 @@ class ElectricVehicle():
 		
 		
 	# Accept a profile	
-	def accept(self,b):
+	def accept(self):
 		# We are chosen as winner, replace the profile:
 		diff = list(map(operator.sub, self.candidate, self.profile))
 		self.profile = list(self.candidate)
-		self.burden = self.burden + b			# update bore burden / discomfort 
+		self.burden = self.candidate_burden			# update bore burden / discomfort 
 		
 		# Note we can send the difference profile only as incremental update
 		return diff
