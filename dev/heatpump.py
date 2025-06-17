@@ -29,9 +29,9 @@ class HeatPump():
 		random.seed(seed)					# set seed for random heat demand 
 		
 		# Device specific params
-		self.capacity = 	14000	# in Wtau, converted in electricity equivalent. Tau=0.25 so 56kWh?
+		self.capacity = 	14000	# in Wtau, converted in electricity equivalent. so divide over 4 for Wh
 		self.max_power = 	5000	# in W
-		self.min_power = 	0
+		self.min_power = 	0		# in W
 		self.initialSoC = 	0.5*self.capacity
 			
 		
@@ -84,7 +84,7 @@ class HeatPump():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		normalizer = self.capacity * 4 	# 1=a full capacity, x4 for the 15mins intervals
+		normalizer = self.capacity 	# 1=a full capacity
 		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
 
 		# Return the improvement and additional burden	

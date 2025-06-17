@@ -45,15 +45,16 @@ intervals = 96                      # number of 15min intervals: 96 is 24hours
 desired_profile = [0]*intervals		# d in the PS paper
 power_profile = [0]*intervals		# x in the PS paper
 
-tau = [0, 0.5, 0.95, 1]      # list of MAX 7 tau's  [0;1] to calculate. focus fairness vs flexibility: 1 is fully fairness, 0 is fully flexibility
-
-e_min = 0.00		# e_min in the PS paper (0.001)
-max_iters = 1000		# maximum number of iterations
+tau = [0, 0.5, 0.75, 0.95, 1]      # list of tau's  [0;1] to calculate. -1 = vanilla PS. focus fairness vs flexibility: 1 is fully fairness, 0 is fully flexibility
+#tau = np.round(np.arange(0, 1.001, 0.05), 2).tolist()   # list from 0-1 with 0.05 precision for a detailed graph across tau, need to comment out legends of other graphs for this
 
 nr_baseloads = 100
 nr_batteries = 25
 nr_evs = 25
 nr_heatpumps = 25
+
+e_min = 0.00		    # e_min in the PS paper (0.001)
+max_iters = 2000		# maximum number of iterations
 
 
 # Create the model:
@@ -88,83 +89,161 @@ tr_improvement = [None] * len(tau)
 tr_objective = [None] * len(tau)
 tr_gini = [None] * len(tau)
 burdens = [None] * len(tau)
-tic()                                               # track time
+times = [None] * len(tau)
+#tic()      # track time
 ps = ProfileSteering(devices)                       # initialize devices in algorithm
 initial_profile = ps.init(desired_profile)          # Initial planning
 for t in range(len(tau)):                           # run for all Tau's
-    print("New iteration starting with tau = ", tau[t])
+    tic()                                           # track time
+    print("Starting new sweep with tau = ", tau[t])
     ps.rerun(initial_profile)  # reset devices
     power_profile[t], tr_improvement[t], tr_objective[t], tr_gini[t] = ps.iterative(e_min, max_iters, tau[t])  # Iterative phase
     burdens[t] = [device.burden for device in devices if device.type != "BL"]   # save burdens of each device
-print('Elapsed time (s): ', toc())
+    times[t] = toc()    
+#print('Elapsed time (s): ', toc())
 
 # And now power_profile has the result
 #print("Resulting profile", power_profile)
+
+# PRINTS
+# Print out table with inf-norm, 2-norm, G, time
+cw = 20 # columnwidth
+print(f"{'Controller':<{cw}}{'Inf-norm (W)':<{cw}}{'2-Norm':<{cw}}{'Gini':<{cw}}{'Time (s)':<{cw}}")
+print('-' * 5 * cw)
+
+# Initial
+initial_objective = np.linalg.norm(np.array(initial_profile)-np.array(desired_profile))	# Initial objective score 2-norm x-p
+print(f"{'Initial':<{cw}}{np.max(initial_profile):<{cw}.2f}{initial_objective:<{cw}.2f}")
+
+# for different tau
+for i in range(len(tau)): 
+    tau_label = "Regular PS" if tau[i] == -1 else f"tau = {tau[i]:.2f}"  # Fix for alignment
+    print(f"{tau_label:<{cw}}{np.max(power_profile[i]):<{cw}.2f}{tr_objective[i][-1]:<{cw}.2f}{tr_gini[i][-1]:<{cw}.4f}{times[i]:<{cw}.2f}")
+
 
 # PLOTS
 # Tools like matplotlib let you plot this in a nice way
 # Other tools may also have this available
 
 # Initialize grid of subplots
-fig, axes = plt.subplots(1, 5, figsize=(22, 5))  # x rows, y columns
-cmap = plt.get_cmap('tab10')  # get a color map (up to 10)
+fig, axes = plt.subplots(2, 3, figsize=(20, 8))  # x rows, y columns
+axes = axes.flatten()       # flatten rows/columns as one list
+cmap = plt.get_cmap('Set1')  # get a color map (up to 10)
+trp = 0.6   # transparency
 
-# First subplot: Initial & Optimized planning
+# First subplot: Power Profile indication
 t = np.arange(0., intervals/4, 0.25)              #sample values at 15mins (scale is in hours)
-axes[0].plot(t, initial_profile, 'r', alpha=0.1, label='Initial for all tau')  # initial, same for all tau
+axes[0].plot(t, initial_profile, 'r', alpha=0.2, label='Initial for all $\\tau$')  # initial, same for all tau
 for i in range(len(tau)):
-    axes[0].plot(t, power_profile[i], color=cmap(i % cmap.N), alpha=0.8-len(tau)/10, label=f'Optimized with tau={tau[i]}')
+    if (tau[i] == -1):
+        axes[0].plot(t, power_profile[i], color=cmap(i % cmap.N), alpha=trp, label=f'Optimized with regular PS')
+    else:    
+        axes[0].plot(t, power_profile[i], color=cmap(i % cmap.N), alpha=trp, label=f'Optimized with $\\tau$={tau[i]}')
 axes[0].set_xlabel('Planning [h]')
 axes[0].set_ylabel('Power profile [W]')
-axes[0].set_title('Power profile before and after optimizing')
+axes[0].set_title('Aggregate power profile')
 axes[0].legend()
-# print maximum peaks [W]
-print(f'Max power peak initially: {np.max(initial_profile):.0f} W')
-print('\n'.join([f'Max power for tau = {tau[i]}: {np.max(power_profile[i]):.0f} W' for i in range(len(tau))]))
 
-# Second subplot: Iteration vs Improvement
+# Second subplot: Objective over Iterations
 for i in range(len(tau)):
-    axes[1].plot(tr_improvement[i], color=cmap(i % cmap.N), alpha=0.8-len(tau)/10, label=f'tau={tau[i]}')
+    if (tau[i] == -1):
+        axes[1].plot(tr_objective[i], color=cmap(i % cmap.N), alpha=trp, label=f'Regular PS')
+    else:
+        axes[1].plot(tr_objective[i], color=cmap(i % cmap.N), alpha=trp, label=f'$\\tau$={tau[i]}')
 axes[1].set_xlabel('Iterations [#]')
-axes[1].set_ylabel('Improvement')
-axes[1].set_title('Improvement per Iteration')
-axes[1].set_yscale('log')
+axes[1].set_ylabel('Objective score (2-norm)')
+axes[1].set_title('Objective Score per Iteration')
 axes[1].grid(True)
 axes[1].legend()
 
-# Third subplot: Iteration vs Objective
+# Third subplot: Improvement over Iterations
 for i in range(len(tau)):
-    axes[2].plot(tr_objective[i], color=cmap(i % cmap.N), alpha=0.8-len(tau)/10, label=f'tau={tau[i]}')
+    if (tau[i] == -1):
+        axes[2].plot(tr_improvement[i], color=cmap(i % cmap.N), alpha=trp, label=f'Regular PS')
+    else:
+        axes[2].plot(tr_improvement[i], color=cmap(i % cmap.N), alpha=trp, label=f'$\\tau$={tau[i]}')
 axes[2].set_xlabel('Iterations [#]')
-axes[2].set_ylabel('Objective score (2-norm)')
-axes[2].set_title('Objective Score per Iteration')
+axes[2].set_ylabel('Improvement of objective (logarithmic)')
+axes[2].set_title('Improvement per Iteration')
+axes[2].set_yscale('log')
 axes[2].grid(True)
 axes[2].legend()
 
-# Fourth subplot: Iteration vs Fairness (Gini Coefficient)
-for i in range(len(tau)):
-    axes[3].plot(tr_gini[i], color=cmap(i % cmap.N), alpha=0.8-len(tau)/10, label=f'tau={tau[i]}')
-axes[3].set_xlabel('Iterations [#]')
-axes[3].set_ylabel('Gini Coefficient')
-axes[3].set_title('Inequality per Iteration (Gini Coefficient)')
-axes[3].grid(True)
-axes[3].legend()
+# Fourth subplot: Final Distribution of Burdens for all Controllable Devices
+## Bar chart::
+#bar_width = 0.8 / len(tau)
+#bar_x = np.arange(len(device_list))     # nr of positions on bar charts
+##plot each device, each tau next to each other
+#for i in range(len(tau)):
+#    color = cmap(i % cmap.N)
+#    offset = i * bar_width
+#    if (tau[i] == -1):
+#        axes[3].bar(bar_x + offset, burdens[i], width=bar_width, color=color, label=f'Regular PS')
+#    else:
+#        axes[3].bar(bar_x + offset, burdens[i], width=bar_width, color=color, label=f'tau={tau[i]}')
+#axes[3].set_xticks(bar_x + bar_width * (len(tau) - 1) / 2)
+#axes[3].set_xticklabels(device_list, rotation=90, ha='right')
+#axes[3].set_title('Distribution of burdens')
+#axes[3].set_xlabel('Devices')
+#axes[3].set_ylabel('Burden')
+#axes[3].legend()
+# Violin chart:
+# Prepare the data
+positions = np.arange(len(tau))
+#labels = ['Regular PS' if tau_val == -1 else f'tau={tau_val}' for tau_val in tau]
+labels = [
+    f"$\\tau$ = {t}\nGini = {g:.2f}" if t != -1 else f"Reg. PS\nGini = {g:.2f}"
+    for t, g in zip(tau, [tr_gini[i][-1] for i in range(len(tau))])
+]
+burden_data = [burdens[i] for i in range(len(tau))]  # Each item is a list of burdens for that tau
+# Create the violin plot
+parts = axes[3].violinplot(burden_data, positions=positions, showmedians=True, widths=0.8)
+# Set colors using your colormap
+for i, pc in enumerate(parts['bodies']):
+    pc.set_facecolor(cmap(i % cmap.N))
+    pc.set_edgecolor('black')
+    pc.set_alpha(0.7)
+# Styling
+axes[3].set_xticks(positions)
+axes[3].set_xticklabels(labels, rotation=30, ha='right')
+axes[3].set_title('Final Distribution of Burdens')
+axes[3].set_ylabel('Burden of Controllable Device')
 
-# Fifth subplot: Final Distribution of Burdens for all Devices (exclude baseloads)
-bar_width = 0.8 / len(tau)
-bar_x = np.arange(len(device_list))     # nr of positions on bar charts
-#plot each device, each tau next to each other
+# Fifth subplot: Fairness (GC) over Iterations
 for i in range(len(tau)):
-    color = cmap(i % cmap.N)
-    offset = i * bar_width
-    axes[4].bar(bar_x + offset, burdens[i], width=bar_width, color=color, label=f'tau={tau[i]}')
-axes[4].set_xticks(bar_x + bar_width * (len(tau) - 1) / 2)
-axes[4].set_xticklabels(device_list, rotation=90, ha='right')
-axes[4].set_title('Distribution of burdens')
-axes[4].set_xlabel('Devices')
-axes[4].set_ylabel('Burden')
+    if (tau[i] == -1):
+        axes[4].plot(tr_gini[i], color=cmap(i % cmap.N), alpha=trp, label=f'Regular PS')
+    else:
+        axes[4].plot(tr_gini[i], color=cmap(i % cmap.N), alpha=trp, label=f'$\\tau$={tau[i]}')
+axes[4].set_xlabel('Iterations [#]')
+axes[4].set_ylabel('Gini Coefficient')
+axes[4].set_title('Inequality per Iteration')
+axes[4].set_ylim(0, 1)  # limit to [0;1]
+axes[4].grid(True)
 axes[4].legend()
 
-# Finalize plot
+# Sixth subplot: Inequality (GC) + Objective (2-norm) over tau
+# Filter out "Regular PS" (tau == -1)
+filtered_tau = [tau[i] for i in range(len(tau)) if tau[i] != -1]
+filtered_gini = [tr_gini[i][-1] for i in range(len(tau)) if tau[i] != -1]
+filtered_obj = [tr_objective[i][-1] for i in range(len(tau)) if tau[i] != -1]
+# Plot Gini on left y-axis
+axes[5].plot(filtered_tau, filtered_gini, marker='o', color='tab:red')
+axes[5].set_ylabel('Inequality (Gini Coefficient)', color='tab:red')
+axes[5].tick_params(axis='y', labelcolor='tab:red')
+axes[5].set_ylim(0, 1)  # limit to [0;1]
+# Create twin axis for Objective
+ax2 = axes[5].twinx()
+ax2.plot(filtered_tau, filtered_obj, marker='o', color='tab:blue')
+ax2.set_ylabel('Objective (2-norm)', color='tab:blue')
+ax2.tick_params(axis='y', labelcolor='tab:blue')
+ax2.set_ylim(min(filtered_obj)-1, max(filtered_obj)+1) 
+# Shared x-axis settings
+axes[5].set_xlabel('Tunable Focus on Fairness [$\\tau$]')
+axes[5].set_title('Inequality and Objective across $\\tau$ after 2000 iterations')
+axes[5].grid(True)
+
+
+# Finalize and render plot
 plt.tight_layout()
 plt.show()

@@ -28,7 +28,7 @@ class Load():
 		self.seed = seed					# set seed for random profile generator
 		
 		# Device specific params
-		self.max = 5000
+		self.max = 5000	# W
 	
 	def init(self, p):
 		# Create a baseload for a given number of intervals

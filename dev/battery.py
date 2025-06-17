@@ -27,9 +27,9 @@ class Battery():
 		self.initial_profile = []			# saved initial profile, to be saved for reruns
 		
 		# Device specific params
-		self.capacity = 	14000
-		self.max_power = 	5000
-		self.min_power = 	-5000
+		self.capacity = 	14000	# Wtau -> so divide over 4 for Wh
+		self.max_power = 	5000	# W
+		self.min_power = 	-5000	# W
 		self.initialSoC = 	0.5*self.capacity
 		
 		# Importing the optimization library
@@ -68,7 +68,7 @@ class Battery():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		normalizer = self.capacity * 4 	# 1=a full capacity, x4 for the 15mins intervals
+		normalizer = self.capacity 	# 1=a full capacity
 		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
 		
 		# Return the improvement and additional burden

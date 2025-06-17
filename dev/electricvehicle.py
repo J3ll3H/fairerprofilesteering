@@ -115,7 +115,7 @@ class ElectricVehicle():
 		self.candidate_improvement = np.linalg.norm(np.array(self.profile)-np.array(p_m)) - np.linalg.norm(np.array(self.candidate)-np.array(p_m))
 		
 		# Calculate the additional burden / discomfort this change would inflict on this device:
-		normalizer = self.chargeRequest * 4 * 2 	# 1=a full capacity moved, x4 for the 15mins intervals
+		normalizer = self.chargeRequest * 2 * 4	# 1=a full capacity moved away, will result in 1-norm deviation of twice the charge, by 4 to convert from Wh to Wtau
 		self.candidate_burden = np.linalg.norm(np.array(self.candidate)-np.array(self.initial_profile), ord=1) / normalizer	# deviation from initial profile, normalized
 		
 		# Return the improvement and additional burden

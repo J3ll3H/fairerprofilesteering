@@ -68,33 +68,35 @@ class ProfileSteering():
 			# difference profile
 			d = list(map(operator.sub, self.x, self.p)) # d = x - p
 			
-			# Vanilla PS mechanism:
-			# request a new candidate profile from each device
-			#for device in self.devices:
-			#	improvement = device.plan(d)
-			#	if improvement > best_improvement:
-			#		best_improvement = improvement
-			#		best_device = device
-
-			# Fairer PS mechanism:
-			# request a new candidate profile from each device
-			for device in self.devices:
-				improvement, add_burden = device.plan(d)
-			# score all devices that have e_m > 0 (essentially exclude baseloads)
-			contributing_devices = [cd for cd in self.devices if cd.candidate_improvement > 0]	# filter out contributing devices, calculate values required for normalization
-			random.shuffle(contributing_devices)		# shuffle device order, for fair picking in case of ties
-			sum_B = sum(cd.candidate_burden for cd in contributing_devices)
-			sum_E = sum(cd.candidate_improvement for cd in contributing_devices)
-			M = len(contributing_devices)	
-			for device in contributing_devices:
-				score_pt1 = device.candidate_burden / ((1/M)*sum_B)
-				score_pt2 = device.candidate_improvement / ((1/M)*sum_E)
-				score = tau*score_pt1-(1-tau)*score_pt2
-				# track lowest scoring device
-				if (score < lowest_score):
-						lowest_score = score			
+			if (tau == -1):					# Vanilla PS mechanism:
+				#request a new candidate profile from each device
+				for device in self.devices:
+					improvement, add_burden = device.plan(d)	# add_burden added to the old code as .plan now returns a tuple
+					if improvement > best_improvement:
+						best_improvement = improvement
 						best_device = device
-						best_improvement = best_device.candidate_improvement
+
+			else: 	# Fairer PS mechanism:
+				# request a new candidate profile from each device
+				for device in self.devices:
+					improvement, add_burden = device.plan(d)
+				# filter out non-contributing devices (essentially exclude baseloads), 
+				contributing_devices = [cd for cd in self.devices if cd.candidate_improvement > 0]	
+				random.shuffle(contributing_devices)		# shuffle device order, for fair picking in case of ties
+				#calculate values required for normalization
+				sum_B = sum(cd.candidate_burden for cd in contributing_devices)		
+				sum_E = sum(cd.candidate_improvement for cd in contributing_devices)
+				M = len(contributing_devices)	
+				# score all devices that have e_m > 0 
+				for device in contributing_devices:
+					score_pt1 = device.candidate_burden / ((1/M)*sum_B)
+					score_pt2 = device.candidate_improvement / ((1/M)*sum_E)
+					score = tau*score_pt1-(1-tau)*score_pt2
+					# track lowest scoring device
+					if (score < lowest_score):
+							lowest_score = score			
+							best_device = device
+							best_improvement = best_device.candidate_improvement
 					
 			# Now set the winner (best scoring device) and update its planning+burden and improvement tracker
 			if best_device is not None:
