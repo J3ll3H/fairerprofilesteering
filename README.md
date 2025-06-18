@@ -1,3 +1,7 @@
+# Fairer Profile Steering
+This is an adaption for 'Fairer Profile Steering', based on Profile Steering - Light. Original documentation found below.
+Done by Jelle de Haan in June 2025 for his BSc Thesis, titled 'Fairness in Demand-Side Energy Management'
+
 # Profile Steering - Light
 
 Simple implementation of the Profile Steering algorithm in Python. Utilizes device optimization code from DEMKit: https://github.com/utwente-energy/demkit/

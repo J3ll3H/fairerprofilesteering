@@ -24,6 +24,8 @@
 # Optimization of devices (OptAlg file) based on the work of Thijs van der Klauw)
 # https://ris.utwente.nl/ws/portalfiles/portal/12378855/thesis_T_van_der_Klauw.pdf
 
+# Adaption for 'Fairer Profile Steering' done by Jelle de Haan in June 2025 for a BSc Thesis
+
 
 
 # Importing models
@@ -222,25 +224,68 @@ axes[4].set_ylim(0, 1)  # limit to [0;1]
 axes[4].grid(True)
 axes[4].legend()
 
-# Sixth subplot: Inequality (GC) + Objective (2-norm) over tau
-# Filter out "Regular PS" (tau == -1)
-filtered_tau = [tau[i] for i in range(len(tau)) if tau[i] != -1]
-filtered_gini = [tr_gini[i][-1] for i in range(len(tau)) if tau[i] != -1]
-filtered_obj = [tr_objective[i][-1] for i in range(len(tau)) if tau[i] != -1]
+## Sixth subplot: Inequality (GC) + Objective (2-norm) over tau
+## Filter out "Regular PS" (tau == -1)
+#filtered_tau = [tau[i] for i in range(len(tau)) if tau[i] != -1]
+#filtered_gini = [tr_gini[i][-1] for i in range(len(tau)) if tau[i] != -1]
+#filtered_obj = [tr_objective[i][-1] for i in range(len(tau)) if tau[i] != -1]
+## Plot Gini on left y-axis
+#axes[5].plot(filtered_tau, filtered_gini, marker='o', color='tab:red')
+#axes[5].set_ylabel('Inequality (Gini Coefficient)', color='tab:red')
+#axes[5].tick_params(axis='y', labelcolor='tab:red')
+#axes[5].set_ylim(0, 1)  # limit to [0;1]
+# Create twin axis for Objective
+#ax2 = axes[5].twinx()
+#ax2.plot(filtered_tau, filtered_obj, marker='o', color='tab:blue')
+#ax2.set_ylabel('Objective (2-norm)', color='tab:blue')
+#ax2.tick_params(axis='y', labelcolor='tab:blue')
+#x2.set_ylim(min(filtered_obj)-1, max(filtered_obj)+1) 
+# Shared x-axis settings
+#axes[5].set_xlabel('Tunable Focus on Fairness [$\\tau$]')
+#axes[5].set_title('Inequality and Objective across $\\tau$ after 2000 iterations')
+#axes[5].grid(True)
+
+# Sixth subplot: HARDCODED! Inequality (GC) + Iterations to converge across tau
+convergencespeed =  [
+    {"tau": 0.00, "gini": 0.4902, "iterations": 55},
+    {"tau": 0.05, "gini": 0.4721, "iterations": 55},
+    {"tau": 0.10, "gini": 0.4624, "iterations": 55},
+    {"tau": 0.15, "gini": 0.4542, "iterations": 55},
+    {"tau": 0.20, "gini": 0.4523, "iterations": 55},
+    {"tau": 0.25, "gini": 0.4475, "iterations": 55},
+    {"tau": 0.30, "gini": 0.4278, "iterations": 55},
+    {"tau": 0.35, "gini": 0.4195, "iterations": 55},
+    {"tau": 0.40, "gini": 0.4118, "iterations": 55},
+    {"tau": 0.45, "gini": 0.3755, "iterations": 60},
+    {"tau": 0.50, "gini": 0.3672, "iterations": 60},
+    {"tau": 0.55, "gini": 0.3621, "iterations": 65},
+    {"tau": 0.60, "gini": 0.3567, "iterations": 130},
+    {"tau": 0.65, "gini": 0.3448, "iterations": 240},
+    {"tau": 0.70, "gini": 0.3421, "iterations": 255},
+    {"tau": 0.75, "gini": 0.3435, "iterations": 290},
+    {"tau": 0.80, "gini": 0.3434, "iterations": 320},
+    {"tau": 0.85, "gini": 0.3459, "iterations": 335},
+    {"tau": 0.90, "gini": 0.3495, "iterations": 395},
+    {"tau": 0.95, "gini": 0.3100, "iterations": 680},
+    {"tau": 1.00, "gini": 0.2883, "iterations": 1835},
+]
+# Extract values
+taus = [v["tau"] for v in convergencespeed]
+ginis = [v["gini"] for v in convergencespeed]
+iters = [v["iterations"] for v in convergencespeed]
 # Plot Gini on left y-axis
-axes[5].plot(filtered_tau, filtered_gini, marker='o', color='tab:red')
+axes[5].plot(taus, ginis, marker='o', color='tab:red')
 axes[5].set_ylabel('Inequality (Gini Coefficient)', color='tab:red')
 axes[5].tick_params(axis='y', labelcolor='tab:red')
 axes[5].set_ylim(0, 1)  # limit to [0;1]
-# Create twin axis for Objective
+# Create twin axis for iterations
 ax2 = axes[5].twinx()
-ax2.plot(filtered_tau, filtered_obj, marker='o', color='tab:blue')
-ax2.set_ylabel('Objective (2-norm)', color='tab:blue')
+ax2.plot(taus, iters, marker='o', color='tab:blue')
+ax2.set_ylabel('# of iterations to converge to final objective', color='tab:blue')
 ax2.tick_params(axis='y', labelcolor='tab:blue')
-ax2.set_ylim(min(filtered_obj)-1, max(filtered_obj)+1) 
 # Shared x-axis settings
 axes[5].set_xlabel('Tunable Focus on Fairness [$\\tau$]')
-axes[5].set_title('Inequality and Objective across $\\tau$ after 2000 iterations')
+axes[5].set_title('Inequality and Convergence Speed across $\\tau$')
 axes[5].grid(True)
 
 
